@@ -2,6 +2,7 @@ import './index.js';
 import { Tinytest } from 'meteor/tinytest';
 import { Meteor } from 'meteor/meteor';
 import { OAuth } from 'meteor/oauth';
+import { ServiceConfiguration } from 'meteor/service-configuration';
 import { iziamOAuth } from 'meteor/pwix:iziam-oauth';
 import { createRequire } from 'node:module';
 import { createServer } from 'node:http';
@@ -72,7 +73,11 @@ function fixture() {
         } };
         return { engine: await iziamOAuth.s.engine() };
     })();
-    return fixturePromise;
+    return fixturePromise.then(async result => {
+        // Tinytest clears Mongo between suite runs; discovery remains cached.
+        await ServiceConfiguration.configurations.upsertAsync({ service: 'iziam' }, { $set: { service: 'iziam' } });
+        return result;
+    });
 }
 
 // Available only when this package's tests are installed in an isolated app.

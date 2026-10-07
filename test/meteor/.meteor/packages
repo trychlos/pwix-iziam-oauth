@@ -1,0 +1,5 @@
+autoupdate
+autopublish
+test-in-console
+local-test:pwix:iziam-oauth
+local-test:pwix:accounts-iziam

@@ -1,7 +1,7 @@
 import { Mongo } from 'meteor/mongo';
 
 // Never published. Raw Mongo operations make redemption atomic across servers.
-const collection = new Mongo.Collection('iz_oauth_states');
+const collection = new Mongo.Collection('iz_oauth_states', { _preventAutopublish: true });
 collection.deny({ insert: () => true, update: () => true, remove: () => true });
 let ready;
 

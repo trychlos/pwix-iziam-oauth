@@ -19,7 +19,7 @@ Package.onUse(api => {
 
 Package.onTest(api => {
     api.versionsFrom('3.3.1');
-    api.use(['ecmascript', 'tinytest', 'oauth', 'pwix:iziam-oauth']);
+    api.use(['ecmascript', 'tinytest', 'oauth', 'service-configuration', 'pwix:iziam-oauth']);
     api.mainModule('test/js/index.js', 'client');
     api.mainModule('test/js/server.js', 'server');
 });
