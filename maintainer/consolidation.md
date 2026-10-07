@@ -11,13 +11,18 @@ protocol work to `pwix:iziam-oauth`. `pwix:iziam-oidc` is retired.
 
 - Keep the `iziam` service, `services.iziam`, `Meteor.loginWithIzIAM`, and the
   login/change-password/logout components.
+
 - Use `iziamOAuth` internally and `AccountsIziam` as the application facade.
+
 - Use Meteor's `/_oauth/iziam` callback for interactive flows; no FlowRouter
   dependency or second callback route.
+
 - Keep credentials in private environment settings under `iziam`. Browser
   options cannot override the issuer, client credentials or callback endpoint.
+
 - Separate OIDC login from OAuth authorization: only validated OIDC identity
   establishes a Meteor account. Client credentials and refresh are server APIs.
+
 - Use one openid-client v6 implementation, with native server loading rather
   than modifying application node_modules during a package build.
 

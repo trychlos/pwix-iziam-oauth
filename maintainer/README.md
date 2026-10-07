@@ -10,8 +10,8 @@ retains history and a startup error for obsolete consumers, without a wrapper.
 From this repository:
 
 ```sh
-npm ci
-npm test
+    npm ci
+    npm test
 ```
 
 Uses openid-client 6.8.4 and jose 6.2.2 against an ephemeral loopback issuer.
@@ -23,15 +23,16 @@ rotation/error handling. No real izIAM account or external provider is used.
 ## Meteor and Chromium integration
 
 **Use an isolated test app and database. Tinytest clears Mongo collections.**
+
 Do not point this suite at an existing application's database.
 
 Copy the checked-in template to a new directory under /tmp:
 
 ```sh
-cp -R test/meteor /tmp/iziam-consolidation-test
-cd /tmp/iziam-consolidation-test
-npm install
-METEOR_PACKAGE_DIRS=/path/to/parent/of/pwix-repositories meteor run --once --port 3970
+    cp -R test/meteor /tmp/iziam-consolidation-test
+    cd /tmp/iziam-consolidation-test
+    npm install
+    METEOR_PACKAGE_DIRS=/path/to/parent/of/pwix-repositories meteor run --once --port 3970
 ```
 
 The package directory must include both this repository and accounts-iziam, plus
@@ -42,7 +43,7 @@ those packages change. Keep the test app outside the repositories.
 From this repository in another terminal (requires Chromium and ChromeDriver):
 
 ```sh
-python3 test/browser/check.py --url http://localhost:3970/
+    python3 test/browser/check.py --url http://localhost:3970/
 ```
 
 The runner explicitly starts the exported test-in-console runner, then exercises

@@ -1,24 +1,5 @@
-import { Mongo } from 'meteor/mongo';
+/*
+ * pwix:iziam-oauth/src/server/js/collections.js
+ */
 
-// Never published. Raw Mongo operations make redemption atomic across servers.
-const collection = new Mongo.Collection('iz_oauth_states', { _preventAutopublish: true });
-collection.deny({ insert: () => true, update: () => true, remove: () => true });
-let ready;
-
-export const states = {
-    async initialize() {
-        if (!ready) ready = collection.rawCollection().createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 });
-        return ready;
-    },
-    async insert(transaction) {
-        await this.initialize();
-        return collection.rawCollection().insertOne(transaction);
-    },
-    async consume(state, now, mode, credentialToken) {
-        await this.initialize();
-        // Explicit expiry check: Mongo's TTL cleanup is asynchronous.
-        return collection.rawCollection().findOneAndDelete(
-            { state, mode, ...(credentialToken ? { _id: credentialToken } : {}), expiresAt: { $gt: now } }, { includeResultMetadata: false }
-        );
-    }
-};
+import '../../common/collections/states/server/index.js';

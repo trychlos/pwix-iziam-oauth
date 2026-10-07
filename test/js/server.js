@@ -12,7 +12,7 @@ const applicationRequire = createRequire(process.cwd() + '/package.json');
 let fixturePromise;
 function fixture() {
     if (!fixturePromise) fixturePromise = (async () => {
-        const { generateKeyPair, exportJWK, SignJWT } = applicationRequire('jose');
+        const { generateKeyPair, exportJWK, SignJWT } = applicationRequire( 'jose' );
         const { privateKey, publicKey } = await generateKeyPair('RS256');
         const jwk = { ...await exportJWK(publicKey), kid: 'meteor-test', alg: 'RS256' };
         const codes = new Map();

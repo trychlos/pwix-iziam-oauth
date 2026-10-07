@@ -4,7 +4,7 @@ import { createServer } from 'node:http';
 import { createHash } from 'node:crypto';
 import * as client from 'openid-client';
 import { generateKeyPair, exportJWK, SignJWT } from 'jose';
-import { Protocol } from '../../src/server/core/protocol.js';
+import { Protocol } from '../../src/server/classes/protocol.class.js';
 
 let server, issuer, privateKey, badPrivateKey, jwk;
 const codes = new Map();

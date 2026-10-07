@@ -1,14 +1,34 @@
-// Protocol engine, independent of Meteor. Credentials never leave this module
-// except through its server-side result (or an explicitly public launch object).
+/*
+ * pwix:iziam-oauth/src/server/classes/protocol.class.js
+ *
+ * 
+ * Protocol engine, independent of Meteor. Credentials never leave this module
+ * except through its server-side result (or an explicitly public launch object).
+ */
+
+import { States } from '../../common/collections/states/index.js';
+
 export class Protocol {
+
+    configuration = null;
+
+    /**
+     * @constructor
+     * @locus Server
+     * @param {Object}
+     */
     constructor({ client, states, settings, now = () => Date.now() }) {
-        Object.assign(this, { client, states, settings, now });
+        Object.assign( this, { client, states, settings, now });
         this.configuration = null;
     }
 
-    async config() {
-        if (!this.configuration) {
-            this.configuration = this.discover().catch(error => {
+    /**
+     * @summary
+     * @returns 
+     */
+    async config(){
+        if( !this.configuration ){
+            this.configuration = this.discover().catch( error => {
                 this.configuration = null;
                 throw error;
             });
@@ -16,6 +36,58 @@ export class Protocol {
         return this.configuration;
     }
 
+    /**
+     * @summary
+     * @param {*} query 
+     * @param {*} mode 
+     * @param {*} credentialToken 
+     * @returns 
+     */
+    async complete( query, mode='oidc', credentialToken ){
+        if( mode === 'oauth' && ( typeof credentialToken !== 'string' || !credentialToken )){
+            throw new Error( 'Expected authorization credential token is required' );
+        }
+        if( !query || typeof query.state !== 'string' || query.state.length > 4096 ){
+            throw new Error( 'Missing or invalid authorization state' );
+        }
+        const transaction = await this.states.consume( query.state, new Date(this.now()), mode, credentialToken);
+        if (!transaction) throw new Error('Unknown, expired or already used authorization state');
+        const callback = new URL(transaction.redirectUri);
+        for (const [key, value] of Object.entries(query)) {
+            if (typeof value !== 'string') throw new Error('Invalid authorization response');
+            callback.searchParams.set(key, value);
+        }
+        const config = await this.config();
+        const tokens = await this.client.authorizationCodeGrant(config, callback, {
+            pkceCodeVerifier: transaction.verifier,
+            expectedState: transaction.state,
+            expectedNonce: transaction.nonce,
+            idTokenExpected: mode === 'oidc'
+        });
+        if (mode === 'oauth') return this.tokenData(tokens);
+        const claims = tokens.claims();
+        if (!claims?.sub || (transaction.expectedSubject && transaction.expectedSubject !== claims.sub)) {
+            throw new Error('Unexpected iziam identity');
+        }
+        const userinfo = config.serverMetadata().userinfo_endpoint
+            ? await this.client.fetchUserInfo(config, tokens.access_token, claims.sub)
+            : claims;
+        // Do not copy arbitrary provider claims into Meteor's service record.
+        const serviceData = {
+            id: claims.sub, issuer: claims.iss,
+            ...this.tokenData(tokens)
+        };
+        for (const field of ['name', 'preferred_username', 'email', 'email_verified', 'picture']) {
+            if (userinfo[field] !== undefined) serviceData[field] = userinfo[field];
+        }
+        if (userinfo.preferred_username) serviceData.username = userinfo.preferred_username;
+        return { serviceData, options: { profile: {} } };
+    }
+
+    /**
+     * 
+     * @returns 
+     */
     async discover() {
         const c = this.client;
         const s = this.settings;
@@ -40,6 +112,12 @@ export class Protocol {
         }, authentication(), options);
     }
 
+    /**
+     * 
+     * @param {*} options 
+     * @param {*} context 
+     * @returns 
+     */
     async start(options = {}, context = {}) {
         const allowed = ['loginStyle', 'popupOptions', 'scopes', 'mobileHint'];
         if (!options || typeof options !== 'object' || Array.isArray(options) ||
@@ -93,47 +171,6 @@ export class Protocol {
             expiresAt: new Date(this.now() + 10 * 60 * 1000)
         });
         return { url, credentialToken, loginStyle, popupOptions };
-    }
-
-    async complete(query, mode = 'oidc', credentialToken) {
-        if (mode === 'oauth' && (typeof credentialToken !== 'string' || !credentialToken)) {
-            throw new Error('Expected authorization credential token is required');
-        }
-        if (!query || typeof query.state !== 'string' || query.state.length > 4096) {
-            throw new Error('Missing or invalid authorization state');
-        }
-        const transaction = await this.states.consume(query.state, new Date(this.now()), mode, credentialToken);
-        if (!transaction) throw new Error('Unknown, expired or already used authorization state');
-        const callback = new URL(transaction.redirectUri);
-        for (const [key, value] of Object.entries(query)) {
-            if (typeof value !== 'string') throw new Error('Invalid authorization response');
-            callback.searchParams.set(key, value);
-        }
-        const config = await this.config();
-        const tokens = await this.client.authorizationCodeGrant(config, callback, {
-            pkceCodeVerifier: transaction.verifier,
-            expectedState: transaction.state,
-            expectedNonce: transaction.nonce,
-            idTokenExpected: mode === 'oidc'
-        });
-        if (mode === 'oauth') return this.tokenData(tokens);
-        const claims = tokens.claims();
-        if (!claims?.sub || (transaction.expectedSubject && transaction.expectedSubject !== claims.sub)) {
-            throw new Error('Unexpected iziam identity');
-        }
-        const userinfo = config.serverMetadata().userinfo_endpoint
-            ? await this.client.fetchUserInfo(config, tokens.access_token, claims.sub)
-            : claims;
-        // Do not copy arbitrary provider claims into Meteor's service record.
-        const serviceData = {
-            id: claims.sub, issuer: claims.iss,
-            ...this.tokenData(tokens)
-        };
-        for (const field of ['name', 'preferred_username', 'email', 'email_verified', 'picture']) {
-            if (userinfo[field] !== undefined) serviceData[field] = userinfo[field];
-        }
-        if (userinfo.preferred_username) serviceData.username = userinfo.preferred_username;
-        return { serviceData, options: { profile: {} } };
     }
 
     grantParameters(options = {}) {

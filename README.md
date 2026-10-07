@@ -8,13 +8,14 @@ and use **pwix:accounts-iziam**, which delegates to this package. The former
 
 Requires Meteor 3.3.1 or later and a Node runtime with native ESM `require`
 (Node 22.12 or later). Tested with Meteor 3.5.2. Meteor 2 is not supported.
+
 Install the application's peer dependency:
 
 ```sh
-meteor npm install 'openid-client@^6.8.4'
+    meteor npm install 'openid-client@^6.8.4'
 ```
 
-Only openid-client v6 is supported. The server loads it through Node's native
+Only openid-client v6 is supported at the moment. The server loads it through Node's native
 module loader, which respects package exports. No build step modifies `jose` or
 any other application dependency. The pwix settings, i18n and UI dependencies
 have their own npm peer requirements; see their documentation.
@@ -24,9 +25,12 @@ have their own npm peer requirements; see their documentation.
 - OIDC authorization code with PKCE: discovery, state/nonce checks, ID-token
   signature and claims validation, UserInfo subject validation, and Meteor's
   credential exchange at `/_oauth/iziam`.
+
 - OAuth-only authorization code with PKCE: server API, using an application-owned
   callback; returns tokens without creating a Meteor account.
+
 - Client credentials and refresh-token grants: server APIs only.
+
 - End-session URL construction and izIAM's `prompt=change_password` interaction.
 
 The OAuth-only API intentionally does not install a client-side router or log in
@@ -40,24 +44,24 @@ Settings come from `private.iziam` in the selected environment managed by
 supported and takes precedence. Never put client secrets in public settings.
 
 ```json
-{
-  "private": {
-    "iziam": {
-      "issuerUrl": "https://identity.example/tenant",
-      "client_id": "application-client",
-      "client_secret": "configure-outside-source-control",
-      "token_endpoint_auth_method": "client_secret_basic",
-      "redirect_uri": "https://application.example/_oauth/iziam",
-      "loginStyle": "popup",
-      "popupOptions": { "width": 900, "height": 450 },
-      "scopes": ["openid", "profile", "email"],
-      "post_logout_redirect_uri": "https://application.example/",
-      "oauth_redirect_uri": "https://application.example/authorization/callback",
-      "oauth_scopes": ["api:read"],
-      "resources": []
+    {
+        "private": {
+            "iziam": {
+                "issuerUrl": "https://identity.example/tenant",
+                "client_id": "application-client",
+                "client_secret": "configure-outside-source-control",
+                "token_endpoint_auth_method": "client_secret_basic",
+                "redirect_uri": "https://application.example/_oauth/iziam",
+                "loginStyle": "popup",
+                "popupOptions": { "width": 900, "height": 450 },
+                "scopes": [ "openid", "profile", "email" ],
+                "post_logout_redirect_uri": "https://application.example/",
+                "oauth_redirect_uri": "https://application.example/authorization/callback",
+                "oauth_scopes": [ "api:read" ],
+                "resources": []
+            }
+        }
     }
-  }
-}
 ```
 
 `issuerUrl` and `client_id` are required. Supported token-endpoint authentication
@@ -80,13 +84,13 @@ Use `AccountsIziam` from `meteor/pwix:accounts-iziam`, including on the server.
 The lower-level equivalents on `iziamOAuth` are implementation APIs.
 
 ```js
-// Client
-Meteor.loginWithIzIAM({ loginStyle: 'popup' }, error => { /* completed */ });
-AccountsIziam.changePassword({}, error => { /* completed */ });
-await AccountsIziam.logout();
+    // Client
+    Meteor.loginWithIzIAM({ loginStyle: 'popup' }, error => { /* completed */ });
+    AccountsIziam.changePassword({}, error => { /* completed */ });
+    await AccountsIziam.logout();
 
-// Both client and server, before the first request
-AccountsIziam.configure({ afterRoute: '/' });
+    // Both client and server, before the first request
+    AccountsIziam.configure({ afterRoute: '/' });
 ```
 
 Login options are restricted to `loginStyle`, `popupOptions`, `scopes`, and
@@ -94,27 +98,27 @@ Login options are restricted to `loginStyle`, `popupOptions`, `scopes`, and
 rejected. OIDC login always includes `openid`.
 
 ```js
-// Server only: machine authorization
-const credentials = await AccountsIziam.authorizationFlow('client_credentials', {
-    scopes: ['api:read']
-});
+    // Server only: machine authorization
+    const credentials = await AccountsIziam.authorizationFlow( 'client_credentials', {
+        scopes: [ 'api:read' ]
+    });
 
-// Server only: refresh. Persist returned rotated credentials atomically in the
-// application's token store, and serialize refreshes for each stored grant.
-const updated = await AccountsIziam.authorizationFlow('refresh_token', {
-    credentials,
-    scopes: ['api:read']
-});
+    // Server only: refresh. Persist returned rotated credentials atomically in the
+    // application's token store, and serialize refreshes for each stored grant.
+    const updated = await AccountsIziam.authorizationFlow( 'refresh_token', {
+        credentials,
+        scopes: [ 'api:read' ]
+    });
 
-// Server only: begin OAuth authorization for an authenticated application session.
-const launch = await AccountsIziam.authorizationFlow('authorization_code', {
-    scopes: ['api:read']
-});
-// Save launch.credentialToken in that session; redirect its browser to launch.url.
+    // Server only: begin OAuth authorization for an authenticated application session.
+    const launch = await AccountsIziam.authorizationFlow( 'authorization_code', {
+        scopes: [ 'api:read' ]
+    });
+    // Save launch.credentialToken in that session; redirect its browser to launch.url.
 
-// In oauth_redirect_uri's server handler, recover the saved value from the same
-// session (never trust a query parameter as the expected credentialToken).
-const granted = await AccountsIziam.completeAuthorization(query, savedCredentialToken);
+    // In oauth_redirect_uri's server handler, recover the saved value from the same
+    // session (never trust a query parameter as the expected credentialToken).
+    const granted = await AccountsIziam.completeAuthorization( query, savedCredentialToken );
 ```
 
 Grant responses contain `accessToken`, `tokenType`, and, when provided,
@@ -141,8 +145,8 @@ provider handler on cancellation, so abandoned transactions expire by TTL.
 ## Validation and maintenance
 
 ```sh
-npm ci
-npm test
+    npm ci
+    npm test
 ```
 
 The Node suite uses a local issuer and signed tokens. Meteor package tests also
@@ -150,3 +154,7 @@ exercise native library loading, the real callback, pending credentials, and
 atomic Mongo state consumption. See [maintainer/README.md](maintainer/README.md)
 for the isolated Meteor/browser test procedure and the
 [consolidation contract](maintainer/consolidation.md).
+
+---
+P. Wieser
+- Last updated on 2026, Jun. 30th
