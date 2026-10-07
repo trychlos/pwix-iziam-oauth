@@ -1,0 +1,7 @@
+{
+  "name": "pwix-iziam-oauth-tests",
+  "private": true,
+  "type": "module",
+  "scripts": { "test": "node --test test/node/*.test.js" },
+  "devDependencies": { "openid-client": "6.8.4", "jose": "6.2.2" }
+}
