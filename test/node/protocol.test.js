@@ -34,6 +34,10 @@ before(async () => {
             let body = '';
             for await (const chunk of req) body += chunk;
             const params = new URLSearchParams(body);
+            if (params.get('grant_type') === 'client_credentials') {
+                assert.equal(decodeURIComponent(Buffer.from(req.headers.authorization.slice(6), 'base64').toString()), 'test-client:private-secret');
+                return send({ access_token: 'machine-token', token_type: 'Bearer', expires_in: 60, scope: params.get('scope') });
+            }
             const code = params.get('code');
             const attempt = codes.get(code);
             codes.delete(code);
@@ -56,7 +60,7 @@ before(async () => {
     await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
     issuer = 'http://127.0.0.1:' + server.address().port;
 });
-after(async () => { await new Promise(resolve => server.close(resolve)); });
+after(async () => { server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); });
 
 function fixture(overrides = {}) {
     const documents = new Map();
@@ -186,4 +190,14 @@ test('OAuth authorization returns server tokens without creating an identity', a
     assert.equal(result.serviceData, undefined);
     assert.equal(result.idToken, undefined);
     await assert.rejects(protocol.complete(query, 'oauth'), /already used/);
+});
+
+test('client credentials authenticates on server and returns no user identity', { timeout: 5000 }, async () => {
+    const { protocol } = fixture();
+    const result = await protocol.clientCredentials({ scopes: ['api:read'] });
+    assert.equal(result.accessToken, 'machine-token');
+    assert.equal(result.scope, 'api:read');
+    assert.equal(result.serviceData, undefined);
+    await assert.rejects(protocol.clientCredentials({ scopes: ['openid'] }), /Invalid OAuth scopes/);
+    await assert.rejects(fixture({ client_secret: undefined }).protocol.clientCredentials(), /confidential/);
 });

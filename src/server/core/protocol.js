@@ -132,6 +132,35 @@ export class Protocol {
         return { serviceData, options: { profile: {} } };
     }
 
+    grantParameters(options = {}) {
+        if (!options || typeof options !== 'object' || Array.isArray(options) ||
+            Object.keys(options).some(key => !['scopes', 'resources'].includes(key))) {
+            throw new Error('Invalid grant options');
+        }
+        const parameters = new URLSearchParams();
+        if (options.scopes !== undefined) {
+            if (!Array.isArray(options.scopes) || options.scopes.some(scope =>
+                typeof scope !== 'string' || !scope || /\s/.test(scope) || scope === 'openid')) {
+                throw new Error('Invalid OAuth scopes');
+            }
+            parameters.set('scope', [...new Set(options.scopes)].join(' '));
+        }
+        const resources = options.resources ?? this.settings.resources ?? [];
+        if (!Array.isArray(resources) || resources.some(resource => typeof resource !== 'string' || !resource)) {
+            throw new Error('Invalid resources');
+        }
+        for (const resource of resources) parameters.append('resource', resource);
+        return parameters;
+    }
+
+    async clientCredentials(options = {}) {
+        if (!this.settings.client_secret || this.settings.token_endpoint_auth_method === 'none') {
+            throw new Error('Client credentials requires a confidential client');
+        }
+        const parameters = this.grantParameters({ scopes: this.settings.oauth_scopes || [], ...options });
+        return this.tokenData(await this.client.clientCredentialsGrant(await this.config(), parameters));
+    }
+
     tokenData(tokens) {
         return {
             accessToken: tokens.access_token,
