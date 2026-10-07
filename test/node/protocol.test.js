@@ -6,12 +6,13 @@ import * as client from 'openid-client';
 import { generateKeyPair, exportJWK, SignJWT } from 'jose';
 import { Protocol } from '../../src/server/core/protocol.js';
 
-let server, issuer, privateKey, jwk;
+let server, issuer, privateKey, badPrivateKey, jwk;
 const codes = new Map();
 let exchanges = 0;
 before(async () => {
     const pair = await generateKeyPair('RS256');
     privateKey = pair.privateKey;
+    badPrivateKey = (await generateKeyPair('RS256')).privateKey;
     jwk = { ...await exportJWK(pair.publicKey), kid: 'test', alg: 'RS256', use: 'sig' };
     server = createServer(async (req, res) => {
         const url = new URL(req.url, issuer);
@@ -56,7 +57,7 @@ before(async () => {
                 .setProtectedHeader({ alg: 'RS256', kid: 'test' })
                 .setSubject(attempt.sub).setIssuer(attempt.issuer || issuer)
                 .setAudience(attempt.audience || 'test-client').setIssuedAt()
-                .setExpirationTime(attempt.expired ? '-1h' : '5m').sign(privateKey);
+                .setExpirationTime(attempt.expired ? '-1h' : '5m').sign(attempt.badSignature ? badPrivateKey : privateKey);
             return send({ access_token: 'access-' + attempt.sub, refresh_token: 'refresh-' + attempt.sub,
                 token_type: 'Bearer', expires_in: 60, ...(attempt.oauth ? {} : { id_token }) });
         }
@@ -72,9 +73,9 @@ function fixture(overrides = {}) {
     const documents = new Map();
     const states = {
         async insert(doc) { documents.set(doc.state, structuredClone(doc)); },
-        async consume(state, now, mode) {
+        async consume(state, now, mode, credentialToken) {
             const doc = documents.get(state);
-            if (!doc || doc.mode !== mode || doc.expiresAt <= now) return null;
+            if (!doc || (credentialToken && doc._id !== credentialToken) || doc.mode !== mode || doc.expiresAt <= now) return null;
             documents.delete(state);
             return doc;
         }
@@ -152,7 +153,7 @@ test('provider denial consumes state and does not exchange a code', async () => 
 });
 
 for (const [label, overrides] of Object.entries({ nonce: { nonce: 'wrong' }, audience: { audience: 'wrong' },
-    issuer: { issuer: 'https://wrong.test' }, expiry: { expired: true } })) {
+    issuer: { issuer: 'https://wrong.test' }, expiry: { expired: true }, signature: { badSignature: true } })) {
     test('reject invalid ID token ' + label, async () => {
         const { protocol } = fixture();
         const launch = await protocol.start();
@@ -191,11 +192,13 @@ test('OAuth authorization returns server tokens without creating an identity', a
     const query = callback(launch, 'alice', { oauth: true });
     // A Meteor login callback must not consume an OAuth-only authorization.
     await assert.rejects(protocol.complete(query), /Unknown/);
-    const result = await protocol.complete(query, 'oauth');
+    await assert.rejects(protocol.complete(query, 'oauth'), /credential token/);
+    await assert.rejects(protocol.complete(query, 'oauth', 'wrong-session'), /Unknown/);
+    const result = await protocol.complete(query, 'oauth', launch.credentialToken);
     assert.equal(result.accessToken, 'access-alice');
     assert.equal(result.serviceData, undefined);
     assert.equal(result.idToken, undefined);
-    await assert.rejects(protocol.complete(query, 'oauth'), /already used/);
+    await assert.rejects(protocol.complete(query, 'oauth', launch.credentialToken), /already used/);
 });
 
 test('client credentials authenticates on server and returns no user identity', { timeout: 5000 }, async () => {

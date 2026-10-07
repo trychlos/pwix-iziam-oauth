@@ -29,7 +29,8 @@ export class Protocol {
         if (!authentication || (authMethod !== 'none' && !s.client_secret)) {
             throw new Error('Invalid iziam token endpoint authentication configuration');
         }
-        const options = s.allowInsecureLocalhost ? { execute: [c.allowInsecureRequests] } : undefined;
+        const options = { execute: [c.enableNonRepudiationChecks] };
+        if (s.allowInsecureLocalhost) options.execute.push(c.allowInsecureRequests);
         if (s.allowInsecureLocalhost && !['localhost', '127.0.0.1', '[::1]'].includes(new URL(s.issuerUrl).hostname)) {
             throw new Error('Insecure discovery is only available for a loopback issuer');
         }
@@ -44,6 +45,10 @@ export class Protocol {
         if (!options || typeof options !== 'object' || Array.isArray(options) ||
             Object.keys(options).some(key => !allowed.includes(key))) {
             throw new Error('Invalid authorization options');
+        }
+        const popupOptions = options.popupOptions || this.settings.popupOptions || { width: 900, height: 450 };
+        if (!popupOptions || typeof popupOptions !== 'object' || Array.isArray(popupOptions)) {
+            throw new Error('popupOptions must be an object');
         }
         const config = await this.config();
         const mode = context.mode || 'oidc';
@@ -87,18 +92,17 @@ export class Protocol {
             expectedSubject: context.expectedSubject,
             expiresAt: new Date(this.now() + 10 * 60 * 1000)
         });
-        const popupOptions = options.popupOptions || s.popupOptions || { width: 900, height: 450 };
-        if (!popupOptions || typeof popupOptions !== 'object' || Array.isArray(popupOptions)) {
-            throw new Error('popupOptions must be an object');
-        }
         return { url, credentialToken, loginStyle, popupOptions };
     }
 
-    async complete(query, mode = 'oidc') {
+    async complete(query, mode = 'oidc', credentialToken) {
+        if (mode === 'oauth' && (typeof credentialToken !== 'string' || !credentialToken)) {
+            throw new Error('Expected authorization credential token is required');
+        }
         if (!query || typeof query.state !== 'string' || query.state.length > 4096) {
             throw new Error('Missing or invalid authorization state');
         }
-        const transaction = await this.states.consume(query.state, new Date(this.now()), mode);
+        const transaction = await this.states.consume(query.state, new Date(this.now()), mode, credentialToken);
         if (!transaction) throw new Error('Unknown, expired or already used authorization state');
         const callback = new URL(transaction.redirectUri);
         for (const [key, value] of Object.entries(query)) {

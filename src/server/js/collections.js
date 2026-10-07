@@ -14,11 +14,11 @@ export const states = {
         await this.initialize();
         return collection.rawCollection().insertOne(transaction);
     },
-    async consume(state, now, mode) {
+    async consume(state, now, mode, credentialToken) {
         await this.initialize();
         // Explicit expiry check: Mongo's TTL cleanup is asynchronous.
         return collection.rawCollection().findOneAndDelete(
-            { state, mode, expiresAt: { $gt: now } }, { includeResultMetadata: false }
+            { state, mode, ...(credentialToken ? { _id: credentialToken } : {}), expiresAt: { $gt: now } }, { includeResultMetadata: false }
         );
     }
 };
