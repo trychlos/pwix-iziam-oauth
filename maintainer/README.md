@@ -7,7 +7,12 @@ retains history and a startup error for obsolete consumers, without a wrapper.
 
 ## Node regression suite
 
-From this repository:
+This suite runs **plain Node**, not Meteor. The protocol class must not import
+`meteor/*`, directly or through a collection. Its `states` constructor argument
+is supplied by an in-memory store in the Node tests and `States.s` in Meteor.
+Do not install an npm package named `meteor` to resolve a failure here.
+
+From this repository (Node 22.12+):
 
 ```sh
     npm ci
@@ -26,24 +31,35 @@ rotation/error handling. No real izIAM account or external provider is used.
 
 Do not point this suite at an existing application's database.
 
-Copy the checked-in template to a new directory under /tmp:
+Use two terminals. In terminal 1, create a fresh test app (the random suffix
+avoids copying into an existing directory):
 
 ```sh
-    cp -R test/meteor /tmp/iziam-consolidation-test
-    cd /tmp/iziam-consolidation-test
-    npm install
-    METEOR_PACKAGE_DIRS=/path/to/parent/of/pwix-repositories meteor run --once --port 3970
+cd /home/pierre/data/dev/pwix-iziam-oauth
+iziam_test_dir=$(mktemp -d /tmp/iziam-suite.XXXXXX)
+cp -R test/meteor/. "$iziam_test_dir/"
+cd "$iziam_test_dir"
+npm install
+unset MONGO_URL MONGO_OPLOG_URL
+ROOT_URL=http://localhost:3970/ METEOR_PACKAGE_DIRS=/home/pierre/data/dev meteor run --once --port 3970
 ```
+
+Wait for `App running at http://localhost:3970/`. Leave terminal 1 running.
+Meteor starts an isolated Mongo instance. Unsetting the Mongo variables prevents
+an inherited application database connection from being used. Port 3970 (and
+3971 for its Mongo instance) must be free.
+
 
 The package directory must include both this repository and accounts-iziam, plus
 any local pwix dependencies being tested. The template pins Meteor 3.5.2 and
 includes npm peers required by the local pwix packages. Adjust peer versions if
 those packages change. Keep the test app outside the repositories.
 
-From this repository in another terminal (requires Chromium and ChromeDriver):
+In terminal 2 (requires Chromium and ChromeDriver):
 
 ```sh
-    python3 test/browser/check.py --url http://localhost:3970/
+cd /home/pierre/data/dev/pwix-iziam-oauth
+python3 test/browser/check.py --url http://localhost:3970/
 ```
 
 The runner explicitly starts the exported test-in-console runner, then exercises
@@ -55,8 +71,10 @@ tokens stay private. The browser profile and ChromeDriver process are temporary.
 The server integration test uses native openid-client loading, real Meteor OAuth
 callback and pending-credential handling, and real Mongo atomic state redemption.
 Test-only provider setup methods are included exclusively by Package.onTest.
-Stop the Meteor process after the test. Rerun it after source changes when using
-`--once`.
+Stop terminal 1 with Ctrl+C after the test. After code changes, restart the Meteor
+command in that same test directory, then rerun the Python command. `--once`
+does not rebuild on changes. For Node-only testing, run `npm test` directly;
+neither Meteor nor the browser runner is required.
 
 ## Release preparation
 
