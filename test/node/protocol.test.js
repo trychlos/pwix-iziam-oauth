@@ -48,7 +48,7 @@ before(async () => {
                 .setAudience(attempt.audience || 'test-client').setIssuedAt()
                 .setExpirationTime(attempt.expired ? '-1h' : '5m').sign(privateKey);
             return send({ access_token: 'access-' + attempt.sub, refresh_token: 'refresh-' + attempt.sub,
-                token_type: 'Bearer', expires_in: 60, id_token });
+                token_type: 'Bearer', expires_in: 60, ...(attempt.oauth ? {} : { id_token }) });
         }
         res.statusCode = 404;
         send({ error: 'not_found' });
@@ -62,9 +62,9 @@ function fixture(overrides = {}) {
     const documents = new Map();
     const states = {
         async insert(doc) { documents.set(doc.state, structuredClone(doc)); },
-        async consume(state, now) {
+        async consume(state, now, mode) {
             const doc = documents.get(state);
-            if (!doc || doc.expiresAt <= now) return null;
+            if (!doc || doc.mode !== mode || doc.expiresAt <= now) return null;
             documents.delete(state);
             return doc;
         }
@@ -73,7 +73,7 @@ function fixture(overrides = {}) {
     const protocol = new Protocol({ client, states, now: () => now, settings: {
         issuerUrl: issuer, client_id: 'test-client', client_secret: 'private-secret',
         allowInsecureLocalhost: true, redirect_uri: 'http://localhost/app/_oauth/iziam',
-        afterUrl: 'http://localhost/app/', ...overrides
+        afterUrl: 'http://localhost/app/', oauth_redirect_uri: 'http://localhost/app/_oauth/iziam', ...overrides
     } });
     return { protocol, documents, advance: ms => { now += ms; } };
 }
@@ -170,4 +170,20 @@ test('logout uses the supplied identity rather than global token state', async (
     assert.equal(new URL(a.url).searchParams.get('id_token_hint'), 'alice-id');
     assert.equal(new URL(b.url).searchParams.get('id_token_hint'), 'bob-id');
     assert.equal(await protocol.logout({}), null);
+});
+
+test('OAuth authorization returns server tokens without creating an identity', async () => {
+    const { protocol } = fixture();
+    const launch = await protocol.start({ scopes: ['api:read'] }, { mode: 'oauth' });
+    const url = new URL(launch.url);
+    assert.equal(url.searchParams.get('scope'), 'api:read');
+    assert.equal(url.searchParams.has('nonce'), false);
+    const query = callback(launch, 'alice', { oauth: true });
+    // A Meteor login callback must not consume an OAuth-only authorization.
+    await assert.rejects(protocol.complete(query), /Unknown/);
+    const result = await protocol.complete(query, 'oauth');
+    assert.equal(result.accessToken, 'access-alice');
+    assert.equal(result.serviceData, undefined);
+    assert.equal(result.idToken, undefined);
+    await assert.rejects(protocol.complete(query, 'oauth'), /already used/);
 });

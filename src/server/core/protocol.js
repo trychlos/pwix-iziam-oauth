@@ -46,34 +46,44 @@ export class Protocol {
             throw new Error('Invalid authorization options');
         }
         const config = await this.config();
+        const mode = context.mode || 'oidc';
+        if (!['oidc', 'oauth'].includes(mode)) throw new Error('Invalid authorization mode');
         const s = this.settings;
+        const redirectUri = mode === 'oidc' ? s.redirect_uri : s.oauth_redirect_uri;
+        if (!redirectUri) throw new Error('Configure oauth_redirect_uri for the application server callback');
+        const redirect = new URL(redirectUri);
+        if (!['https:', 'http:'].includes(redirect.protocol) || redirect.search || redirect.hash) {
+            throw new Error('Invalid authorization callback URL');
+        }
         const loginStyle = options.mobileHint ? 'redirect' : (options.loginStyle || s.loginStyle || 'popup');
         if (!['popup', 'redirect'].includes(loginStyle)) throw new Error('Invalid login style');
-        const scopes = options.scopes ?? s.scopes ?? ['openid'];
+        const scopes = options.scopes ?? (mode === 'oidc' ? (s.scopes ?? ['openid']) : (s.oauth_scopes ?? []));
         if (!Array.isArray(scopes) || scopes.some(scope => typeof scope !== 'string' || !scope || /\s/.test(scope))) {
             throw new Error('Invalid scopes');
         }
-        const requestedScopes = [...new Set([...scopes, 'openid'])];
+        if (mode === 'oauth' && scopes.includes('openid')) throw new Error('Use OIDC login for the openid scope');
+        const requestedScopes = [...new Set(mode === 'oidc' ? [...scopes, 'openid'] : scopes)];
         const credentialToken = this.client.randomState();
         const verifier = this.client.randomPKCECodeVerifier();
-        const nonce = this.client.randomNonce();
+        const nonce = mode === 'oidc' ? this.client.randomNonce() : undefined;
         // Meteor needs this envelope to close its popup or resume a redirect.
         // Only random correlation data and the application return URL are public.
         const state = Buffer.from(JSON.stringify({
             loginStyle, credentialToken, redirectUrl: s.afterUrl
         })).toString('base64');
         const parameters = new URLSearchParams({
-            redirect_uri: s.redirect_uri,
+            redirect_uri: redirectUri,
             scope: requestedScopes.join(' '),
             code_challenge: await this.client.calculatePKCECodeChallenge(verifier),
-            code_challenge_method: 'S256', state, nonce
+            code_challenge_method: 'S256', state
         });
+        if (nonce) parameters.set('nonce', nonce);
         for (const resource of s.resources || []) parameters.append('resource', resource);
         if (context.purpose === 'change_password') parameters.set('prompt', 'change_password');
         const url = this.client.buildAuthorizationUrl(config, parameters).toString();
         await this.states.insert({
-            _id: credentialToken, state, verifier, nonce,
-            redirectUri: s.redirect_uri,
+            _id: credentialToken, state, verifier, nonce, mode,
+            redirectUri,
             expectedSubject: context.expectedSubject,
             expiresAt: new Date(this.now() + 10 * 60 * 1000)
         });
@@ -84,11 +94,11 @@ export class Protocol {
         return { url, credentialToken, loginStyle, popupOptions };
     }
 
-    async complete(query) {
+    async complete(query, mode = 'oidc') {
         if (!query || typeof query.state !== 'string' || query.state.length > 4096) {
             throw new Error('Missing or invalid authorization state');
         }
-        const transaction = await this.states.consume(query.state, new Date(this.now()));
+        const transaction = await this.states.consume(query.state, new Date(this.now()), mode);
         if (!transaction) throw new Error('Unknown, expired or already used authorization state');
         const callback = new URL(transaction.redirectUri);
         for (const [key, value] of Object.entries(query)) {
@@ -100,8 +110,9 @@ export class Protocol {
             pkceCodeVerifier: transaction.verifier,
             expectedState: transaction.state,
             expectedNonce: transaction.nonce,
-            idTokenExpected: true
+            idTokenExpected: mode === 'oidc'
         });
+        if (mode === 'oauth') return this.tokenData(tokens);
         const claims = tokens.claims();
         if (!claims?.sub || (transaction.expectedSubject && transaction.expectedSubject !== claims.sub)) {
             throw new Error('Unexpected iziam identity');
@@ -112,17 +123,24 @@ export class Protocol {
         // Do not copy arbitrary provider claims into Meteor's service record.
         const serviceData = {
             id: claims.sub, issuer: claims.iss,
-            accessToken: tokens.access_token,
-            idToken: tokens.id_token,
-            ...(tokens.refresh_token ? { refreshToken: tokens.refresh_token } : {}),
-            ...(tokens.expires_in !== undefined ? { expiresAt: this.now() + tokens.expires_in * 1000 } : {}),
-            ...(tokens.scope ? { scope: tokens.scope } : {})
+            ...this.tokenData(tokens)
         };
         for (const field of ['name', 'preferred_username', 'email', 'email_verified', 'picture']) {
             if (userinfo[field] !== undefined) serviceData[field] = userinfo[field];
         }
         if (userinfo.preferred_username) serviceData.username = userinfo.preferred_username;
         return { serviceData, options: { profile: {} } };
+    }
+
+    tokenData(tokens) {
+        return {
+            accessToken: tokens.access_token,
+            tokenType: tokens.token_type,
+            ...(tokens.id_token ? { idToken: tokens.id_token } : {}),
+            ...(tokens.refresh_token ? { refreshToken: tokens.refresh_token } : {}),
+            ...(tokens.expires_in !== undefined ? { expiresAt: this.now() + tokens.expires_in * 1000 } : {}),
+            ...(tokens.scope !== undefined ? { scope: tokens.scope } : {})
+        };
     }
 
     async logout(serviceData) {
