@@ -15,9 +15,12 @@ iziamOAuth.s = {
     async engine() {
         if (!enginePromise) enginePromise = (async () => {
             const version = applicationRequire('openid-client/package.json').version;
-            if (!/^6\./.test(version)) throw new Error('iziam requires openid-client 6 (>= 6.8.4)');
+            const [major, minor, patch] = version.split('.').map(Number);
+            if (major !== 6 || minor < 8 || (minor === 8 && patch < 4)) {
+                throw new Error('iziam requires openid-client 6 (>= 6.8.4)');
+            }
             const client = applicationRequire('openid-client');
-            const environment = await EnvSettings.s.environmentServerSettings();
+            const environment = Meteor.settings.private?.iziam ? null : await EnvSettings.s.environmentServerSettings();
             const privateSettings = environment?.settings?.private?.iziam || Meteor.settings.private?.iziam;
             if (!privateSettings) throw new ServiceConfiguration.ConfigError();
             const settings = { ...privateSettings };
@@ -69,4 +72,4 @@ iziamOAuth.authorizationFlow = async (grantType, options = {}) => {
     if (grantType !== 'authorization_code') throw new Error('Unsupported grant type');
     return (await iziamOAuth.s.engine()).start(options, { mode: 'oauth' });
 };
-iziamOAuth.completeAuthorization = async query => (await iziamOAuth.s.engine()).complete(query, 'oauth');
+iziamOAuth.completeAuthorization = async (query, credentialToken) => (await iziamOAuth.s.engine()).complete(query, 'oauth', credentialToken);
