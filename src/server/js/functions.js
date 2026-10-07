@@ -1,62 +1,59 @@
-/*
- * pwix:iziam-oauth/src/server/js/functions.js
- */
-
-import _ from 'lodash';
-import crypto from 'node:crypto';
-import { url } from 'node:url';
-
-import { EnvSettings } from 'meteor/pwix:env-settings';
-import { Logger } from 'meteor/pwix:logger';
-import { Random } from 'meteor/random';
+import { createRequire } from 'node:module';
+import { Meteor } from 'meteor/meteor';
+import { OAuth } from 'meteor/oauth';
 import { ServiceConfiguration } from 'meteor/service-configuration';
+import { EnvSettings } from 'meteor/pwix:env-settings';
+import { Protocol } from '../core/protocol.js';
+import { states } from './collections.js';
 
-import { States } from '../../common/collections/states/index.js';
-
-import { GrantType } from '../../common/definitions/grant-type.def.js';
-
-const logger = Logger.get();
+// Native Node loading respects ESM package exports, including jose. It also
+// avoids Meteor's compiler rewriting openid-client's transitive imports.
+const applicationRequire = createRequire(process.cwd() + '/package.json');
+let enginePromise;
 
 iziamOAuth.s = {
-
-    /*
-     * @summary Starts an Authorization Code flow
-     * @param {GrantType} grantType the definition as returned from GrantType.Knowns()
-     * @param {Object} params the configuration object
-     * @returns {Object}
-     */
-    async authorization_code_start( grantType, params ){
-        const stateDoc = await States.s.dbNew( grantType, params );
-        if( !stateDoc ){
-            return { error: 'UnableToCreateState' };
-        }
-        // when returning the stateDoc to the client, be sure to remove the PKCE code verifier which msut stays server-side
-        const clientDoc = { ...stateDoc };
-        delete clientDoc.pkce.code_verifier;
-        return clientDoc;
+    async engine() {
+        if (!enginePromise) enginePromise = (async () => {
+            const version = applicationRequire('openid-client/package.json').version;
+            if (!/^6\./.test(version)) throw new Error('iziam requires openid-client 6 (>= 6.8.4)');
+            const client = applicationRequire('openid-client');
+            const environment = await EnvSettings.s.environmentServerSettings();
+            const privateSettings = environment?.settings?.private?.iziam || Meteor.settings.private?.iziam;
+            if (!privateSettings) throw new ServiceConfiguration.ConfigError();
+            const settings = { ...privateSettings };
+            const callback = Meteor.absoluteUrl('_oauth/iziam');
+            settings.redirect_uri = settings.redirect_uri || callback;
+            if (settings.redirect_uri !== callback) throw new Error('iziam redirect_uri must equal ' + callback);
+            settings.afterUrl = new URL(iziamOAuth.configure().afterRoute, Meteor.absoluteUrl()).toString();
+            if (new URL(settings.afterUrl).origin !== new URL(Meteor.absoluteUrl()).origin) {
+                throw new Error('iziam afterRoute must stay on the application origin');
+            }
+            // Meteor only needs a service marker. Never publish client_secret via
+            // ServiceConfiguration, which accounts packages expose to browsers.
+            await ServiceConfiguration.configurations.upsertAsync({ service: 'iziam' }, {
+                $set: { service: 'iziam' },
+                $unset: { client_secret: '', secret: '' }
+            });
+            return new Protocol({ client, states, settings });
+        })().catch(error => { enginePromise = null; throw error; });
+        return enginePromise;
     },
-
-    /**
-     * @summary Handle izIAM answer
-     * @param {Object} params
-     * @param {Object} queryParams
-     * @returns {}
-     */
-    async handle( params, queryParams ){
-        logger.debug( 'iziamOAuth.s.handle()', 'params', params, 'queryParams', queryParams );
-        const stateDoc = await States.s.dbFetch({ _id: queryParams.state });
+    async loginOptions(options = {}, context = {}) {
+        return (await this.engine()).start(options, context);
     },
-
-    /*
-     * @summary Generate a code verifier and its challenge suitable for PKCE run
-     */
-    async pkceChallenge( length=43 ){
-        const code_verifier = iziamOAuth.fn.base64url( crypto.randomBytes( 1024 )).slice( 0, length );
-        const code_challenge = iziamOAuth.fn.base64url( crypto.createHash( 'sha256' ).update( code_verifier ).digest());
-        return {
-            code_verifier,
-            code_challenge,
-            code_challenge_method: 'S256'
-        };
+    async logoutOptions(serviceData) {
+        return (await this.engine()).logout(serviceData);
     }
 };
+
+OAuth.registerService('iziam', 2, null, async query => {
+    try {
+        return await (await iziamOAuth.s.engine()).complete(query);
+    } catch (error) {
+        // Provider errors can embed tokens or callback parameters. Send a bounded
+        // error through Meteor's credential completion mechanism instead.
+        throw new Meteor.Error('iziam-authorization-failed', 'izIAM authorization failed or expired');
+    }
+});
+
+iziamOAuth.retrieveCredential = (token, secret) => OAuth.retrieveCredential(token, secret);
