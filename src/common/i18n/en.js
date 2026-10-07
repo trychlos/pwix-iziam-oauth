@@ -9,11 +9,11 @@ iziamOAuth.i18n = {
             definitions: {
                 grant_type: {
                     auth_code_label: 'Authorization Code',
-                    auth_code_description: '<auth_code_description>',
+                    auth_code_description: 'Exchange an authorization code for tokens.',
                     client_credentials_label: 'Client Credentials',
-                    client_credentials_description: '<client_credentials_description>',
+                    client_credentials_description: 'Obtain tokens for a confidential client.',
                     refresh_token_label: 'Refresh Token',
-                    refresh_token_description: '<refresh_token_description>',
+                    refresh_token_description: 'Renew tokens using a refresh token.',
                 }
             }
         }
