@@ -4,7 +4,11 @@
 
 import _ from 'lodash';
 
+import { check } from 'meteor/check';
+import { Logger } from 'meteor/pwix:logger';
 import { ReactiveVar } from 'meteor/reactive-var';
+
+const logger = Logger.get();
 
 let _conf = {};
 
@@ -24,6 +28,10 @@ iziamOAuth._defaults = {
 iziamOAuth.configure = function( o ){
     if( o ){
         check( o, Object );
+        if( o.afterRoute !== undefined && ( typeof o.afterRoute !== 'string' ||
+            !o.afterRoute.startsWith( '/' ) || o.afterRoute.startsWith( '//' ))){
+            throw new Error( 'afterRoute must be an application-relative path' );
+        }
         // check that keys exist
         const built_conf = {};
         Object.keys( o ).forEach(( it ) => {
@@ -34,7 +42,7 @@ iziamOAuth.configure = function( o ){
             }
         });
         if( Object.keys( built_conf ).length ){
-            _conf = _.merge( iziamOAuth._defaults, _conf, built_conf );
+            _conf = _.merge( {}, iziamOAuth._defaults, _conf, built_conf );
             iziamOAuth._conf.set( _conf );
             logger.verbose({ verbosity: _conf.verbosity, against: iziamOAuth.C.Verbose.CONFIGURE }, 'configure() with', built_conf );
         }
