@@ -94,3 +94,7 @@ exercising a real tenant. No publication or deployment is performed by the tests
 The implementation was also checked against the installed Meteor oauth 3.0.4,
 oauth2 1.3.3 and accounts-oauth 1.4.7 sources. Meteor's state envelope is retained
 for popup/redirect completion; secrets are stored separately on the server.
+
+---
+P. Wieser
+- Last updated on 2026, Oct. 7th

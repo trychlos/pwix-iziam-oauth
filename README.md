@@ -157,4 +157,4 @@ for the isolated Meteor/browser test procedure and the
 
 ---
 P. Wieser
-- Last updated on 2026, Jun. 30th
+- Last updated on 2026, Oct. 7th
