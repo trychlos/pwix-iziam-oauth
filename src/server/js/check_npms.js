@@ -4,14 +4,12 @@
 
 import { checkNpmVersions } from 'meteor/tmeasday:check-npm-versions';
 
-if( false ){
-    // whitelist packages which are included via a subfolder or badly recognized
-}
+// openid-client is loaded and version-checked natively in functions.js;
+// jose is its transitive dependency. Meteor's package-scoped resolver cannot
+// reliably inspect these ESM packages and otherwise reports false missing peers.
 
 checkNpmVersions({
-    'jose': '^6.2.2',
-    'lodash': '^4.17.0',
-    'openid-client': '^6.8.4'
+    'lodash': '^4.17.0'
 },
     'pwix:iziam-oauth'
 );
