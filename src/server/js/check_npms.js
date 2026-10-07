@@ -13,5 +13,5 @@ checkNpmVersions({
     'lodash': '^4.17.0',
     'openid-client': '^6.8.4'
 },
-    'pwix:accounts-manager'
+    'pwix:iziam-oauth'
 );

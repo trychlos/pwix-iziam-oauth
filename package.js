@@ -13,9 +13,9 @@ Package.onUse( api => {
     api.use( 'mongo' );
     api.use( 'oauth' );
     api.use( 'oauth2' );
-    api.use(' pwix:env-settings@2.1.0', 'server' );
-    api.use(' pwix:env-settings-ext@1.2.0', 'server' );
-    api.use(' pwix:i18n@1.7.0' );
+    api.use( 'pwix:env-settings@2.1.0', 'server' );
+    api.use( 'pwix:env-settings-ext@1.2.0', 'server' );
+    api.use( 'pwix:i18n@1.7.0' );
     api.use( 'reactive-var' );
     api.use( 'service-configuration' );
     api.use( 'tmeasday:check-npm-versions@1.0.2 || 2.0.0-beta.0', 'server' );

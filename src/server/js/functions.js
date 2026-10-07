@@ -53,7 +53,7 @@ iziamOAuth.s = {
                     $set: { service: iziamOAuth.C.Service },
                     $unset: { client_secret: '', secret: '' }
                 });
-                return new Protocol({ client, States, settings });
+                return new Protocol({ client, states: States.s, settings });
             })().catch( error => { enginePromise = null; throw error; });
         }
         return enginePromise;

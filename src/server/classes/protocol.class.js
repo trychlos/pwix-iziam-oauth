@@ -6,8 +6,6 @@
  * except through its server-side result (or an explicitly public launch object).
  */
 
-import { States } from '../../common/collections/states/index.js';
-
 export class Protocol {
 
     configuration = null;
