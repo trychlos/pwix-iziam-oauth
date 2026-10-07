@@ -1,18 +1,13 @@
 /*
- * pwix:iziam-oidc/src/server/js/methods.js
+ * pwix:iziam-oauth/src/server/js/methods.js
  */
 
 Meteor.methods({
-    async 'pwix.iziamOIDC.m.accessToken'(){
-        return await iziamOIDC.s.tokenSet?.access_token;
+    async 'pwix.iziamOAuth.m.authorization_code_start'( grant_type, params ){
+        return await iziamOAuth.s.authorization_code_start( grant_type, params );
     },
-    async 'pwix.iziamOIDC.m.changeOptions'(){
-        return await iziamOIDC.s.changeOptions( this.userId );
-    },
-    async 'pwix.iziamOIDC.m.loginOptions'( options ){
-        return await iziamOIDC.s.loginOptions( options );
-    },
-    async 'pwix.iziamOIDC.m.logoutOptions'(){
-        return await iziamOIDC.s.logoutOptions();
-    },
+
+    async 'pwix.iziamOAuth.m.handle'( params, queryParams ){
+        return await iziamOAuth.s.handle( params, queryParams );
+    }
 });

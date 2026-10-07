@@ -1,4 +1,4 @@
-# pwix:iziam-oidc - TODO
+# pwix:iziam-oauth - TODO
 
 ## Summary
 

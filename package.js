@@ -1,38 +1,8 @@
-// openid-client uses jose which describes its exports as virtuals, i.e. exports are mapped from files to other paths
-// Unfortunately, MeteorJS doesn't know how to handle these mapped exports when used from MeteorJS packages!
-// So have to shim the needed exports to physical files (list of openid-client v6.8.4)
-// https://claude.ai/chat/58ad8a61-cefb-46b9-aae3-30458f0f066b
-
-const fs = Npm.require( 'fs' );
-const path = Npm.require( 'path' );
-
-(function patchJoseExports(){
-    try {
-        // process.cwd() is the app root when Meteor invokes package.js
-        const joseRoot = path.join( process.cwd(), 'node_modules', 'jose' );
-        if( !fs.existsSync( joseRoot )) return; // app hasn't installed jose yet — nothing to patch
-
-        const decryptDir = path.join( joseRoot, 'jwe', 'compact' );
-        const decryptFile = path.join( decryptDir, 'decrypt.js' );
-        if( !fs.existsSync( decryptFile )){
-            fs.mkdirSync( decryptDir, { recursive: true });
-            fs.writeFileSync( decryptFile, `export * from '../../dist/webapi/jwe/compact/decrypt.js';\n` );
-        }
-
-        const errorsFile = path.join( joseRoot, 'errors.js' );
-        if( !fs.existsSync( errorsFile )){
-            fs.writeFileSync( errorsFile, `export * from './dist/webapi/util/errors.js';\n` );
-        }
-    } catch (e) {
-        console.warn( '[pwix:iziam-oidc] could not patch jose exports shim:', e.message );
-    }
-})();
-
 Package.describe({
-    name: 'pwix:iziam-oidc',
-    version: '1.1.0-rc',
-    summary: 'izIAM OpenID Connect login flow',
-    git: 'https://github.com/trychlos/pwix-iziam-oidc.git',
+    name: 'pwix:iziam-oauth',
+    version: '1.0.0-rc',
+    summary: 'izIAM OAuth client',
+    git: 'https://github.com/trychlos/pwix-iziam-oauth.git',
     documentation: 'README.md'
 });
 
@@ -45,23 +15,30 @@ Package.onUse( function( api ){
 Package.onTest( function( api ){
     configure( api );
     api.use( 'tinytest' );
-    api.use( 'pwix:iziam-oidc' );
+    api.use( 'pwix:iziam-oauth' );
     api.mainModule( 'test/js/index.js' );
 });
 
 function configure( api ){
     api.versionsFrom([ '2.9.0', '3.0-rc.1' ]);
     api.export([
-        'iziamOIDC'
+        'iziamOAuth'
     ]);
+    api.use( 'aldeed:simple-schema@2.0.0' );
     api.use( 'ecmascript' );
     api.use( 'fetch' );
+    api.use( 'mongo' );
     api.use( 'oauth' );
     api.use( 'oauth2' );
-    api.use( 'pwix:env-settings@2.1.0' );
-    api.use( 'pwix:env-settings-ext@1.3.0' );
+    api.use( 'ostrio:flow-router-extra@3.0.0' );
+    api.use( 'pwix:collection-timestampable@2.4.0' );
+    api.use( 'pwix:env-settings-ext@1.2.0' );
+    api.use( 'pwix:field@1.8.0' );
+    api.use( 'pwix:forms@1.9.0' );
+    api.use( 'pwix:i18n@1.7.0' );
     api.use( 'pwix:logger@1.0.0' );
-    api.use( 'random', 'client' );
+    api.use( 'random' );
+    api.use( 'reactive-var' );
     api.use( 'service-configuration' );
     api.use( 'tmeasday:check-npm-versions@2.0.0', 'server' );
     api.use( 'tracker' );

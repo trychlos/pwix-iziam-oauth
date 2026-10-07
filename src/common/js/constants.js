@@ -1,8 +1,8 @@
 /*
- * pwix:iziam-oidc/src/common/js/constants.js
+ * pwix:iziam-oauth/src/common/js/constants.js
  */
 
-iziamOIDC.C = {
+iziamOAuth.C = {
     Service: 'iziam',
 
     // verbosity levels
@@ -15,4 +15,4 @@ iziamOIDC.C = {
 
 // non exported variables
 
-I18N = 'pwix:iziam-oidc:i18n:namespace';
+I18N = 'pwix:iziam-oauth:i18n:namespace';

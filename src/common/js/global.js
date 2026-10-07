@@ -1,6 +1,6 @@
 /*
- * pwix:iziam-oidc/src/common/js/global.js
+ * pwix:iziam-oauth/src/common/js/global.js
  */
 
-iziamOIDC = {
+iziamOAuth = {
 };

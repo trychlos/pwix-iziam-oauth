@@ -2,8 +2,8 @@
 import { Tinytest } from "meteor/tinytest";
 
 // Import and rename a variable exported by iziam.js.
-import { name as packageName } from "meteor/pwix:iziam-oidc";
-import { name as packageName } from "meteor/pwix:iziam-oidc";
+import { name as packageName } from "meteor/pwix:iziam-oauth";
+import { name as packageName } from "meteor/pwix:iziam-oauth";
 
 // Write your tests here!
 // Here is an example.

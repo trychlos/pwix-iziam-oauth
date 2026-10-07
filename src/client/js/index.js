@@ -1,7 +1,8 @@
 /*
- * pwix:iziam-oidc/src/client/js/index.js
+ * pwix:iziam-oauth/src/client/js/index.js
  */
 
 import '../../common/js/index.js';
 
-import './iziam_client.js';
+import './functions.js';
+import './routes.js';
