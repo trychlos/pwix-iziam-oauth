@@ -61,6 +61,10 @@ iziamOAuth.retrieveCredential = (token, secret) => OAuth.retrieveCredential(toke
 // OAuth-only authorization is deliberately server-side. The application owns
 // oauth_redirect_uri and passes its query to completeAuthorization there.
 iziamOAuth.authorizationFlow = async (grantType, options = {}) => {
+    if (grantType === 'refresh_token') {
+        const { credentials, ...grantOptions } = options;
+        return (await iziamOAuth.s.engine()).refresh(credentials, grantOptions);
+    }
     if (grantType === 'client_credentials') return (await iziamOAuth.s.engine()).clientCredentials(options);
     if (grantType !== 'authorization_code') throw new Error('Unsupported grant type');
     return (await iziamOAuth.s.engine()).start(options, { mode: 'oauth' });

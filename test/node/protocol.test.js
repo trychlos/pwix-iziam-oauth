@@ -38,6 +38,12 @@ before(async () => {
                 assert.equal(decodeURIComponent(Buffer.from(req.headers.authorization.slice(6), 'base64').toString()), 'test-client:private-secret');
                 return send({ access_token: 'machine-token', token_type: 'Bearer', expires_in: 60, scope: params.get('scope') });
             }
+            if (params.get('grant_type') === 'refresh_token') {
+                const token = params.get('refresh_token');
+                if (token === 'invalid') { res.statusCode = 400; return send({ error: 'invalid_grant' }); }
+                return send({ access_token: 'renewed-access', token_type: 'Bearer', expires_in: 90,
+                    ...(token === 'rotate' ? { refresh_token: 'rotated-token' } : {}) });
+            }
             const code = params.get('code');
             const attempt = codes.get(code);
             codes.delete(code);
@@ -200,4 +206,18 @@ test('client credentials authenticates on server and returns no user identity', 
     assert.equal(result.serviceData, undefined);
     await assert.rejects(protocol.clientCredentials({ scopes: ['openid'] }), /Invalid OAuth scopes/);
     await assert.rejects(fixture({ client_secret: undefined }).protocol.clientCredentials(), /confidential/);
+});
+
+test('refresh preserves omitted credentials and returns rotated refresh tokens', async () => {
+    const { protocol } = fixture();
+    const previous = { accessToken: 'old', refreshToken: 'keep', scope: 'api:read', id: 'alice' };
+    const result = await protocol.refresh(previous);
+    assert.equal(result.accessToken, 'renewed-access');
+    assert.equal(result.refreshToken, 'keep');
+    assert.equal(result.scope, 'api:read');
+    assert.equal(previous.accessToken, 'old');
+    const rotated = await protocol.refresh({ refreshToken: 'rotate' });
+    assert.equal(rotated.refreshToken, 'rotated-token');
+    await assert.rejects(protocol.refresh({ refreshToken: 'invalid' }));
+    await assert.rejects(protocol.refresh({}), /refresh token/);
 });

@@ -161,6 +161,24 @@ export class Protocol {
         return this.tokenData(await this.client.clientCredentialsGrant(await this.config(), parameters));
     }
 
+    async refresh(previous, options = {}) {
+        if (!previous || typeof previous.refreshToken !== 'string' || !previous.refreshToken) {
+            throw new Error('A server-side refresh token is required');
+        }
+        const parameters = this.grantParameters(options);
+        const tokens = await this.client.refreshTokenGrant(await this.config(), previous.refreshToken, parameters);
+        const claims = tokens.claims();
+        if (claims && ((previous.id && claims.sub !== previous.id) ||
+            (previous.issuer && claims.iss !== previous.issuer))) {
+            throw new Error('Unexpected refreshed identity');
+        }
+        // Providers may omit refresh_token or scope. Preserve the existing
+        // values in that case, and return any rotated token to the caller.
+        const result = { ...previous, ...this.tokenData(tokens) };
+        if (tokens.expires_in === undefined) delete result.expiresAt;
+        return result;
+    }
+
     tokenData(tokens) {
         return {
             accessToken: tokens.access_token,
