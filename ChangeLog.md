@@ -6,7 +6,7 @@
 
     Release date:
 
-    - 
+    - Document required runtime OAuth configuration refresh without application restart.
 
 ### 1.0.0
 
@@ -16,4 +16,4 @@
 
 ---
 P. Wieser
-- Last updated on 2026, Oct. 7th
+- Last updated on 2026, Oct. 9th

@@ -12,7 +12,7 @@
 | ---: | :---       | :---                       |
 |    1 | 2026-10- 7 | Add deployment-specific testing against a real izIAM tenant before publishing |
 |    2 | 2026-10- 7 | Extend client authentication methods when private_key_jwt or mTLS will be needed |
-|    3 | 2026-10- 7 | Add issuer configuration invalidation if runtime settings changes are needed |
+|    3 | 2026-10- 9 | Refresh cached OAuth engine/settings and discovered configuration when effective runtime settings change (including client secret), without requiring an application restart. Preserve pending authorization transactions safely. |
 |    4 |  |  |
 
 ---
@@ -23,4 +23,4 @@
 
 ---
 P. Wieser
-- Last updated on 2026, Oct. 7th
+- Last updated on 2026, Oct. 9th
