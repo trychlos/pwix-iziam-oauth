@@ -9,7 +9,8 @@ import { checkNpmVersions } from 'meteor/tmeasday:check-npm-versions';
 // reliably inspect these ESM packages and otherwise reports false missing peers.
 
 checkNpmVersions({
-    'lodash': '^4.17.0'
+    'lodash': '^4.17.0',
+    'openid-client': '^6.8.4'
 },
     'pwix:iziam-oauth'
 );

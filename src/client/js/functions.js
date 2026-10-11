@@ -12,7 +12,7 @@ iziamOAuth.requestCredential = ( options, callback, method = 'pwix.iziamOAuth.m.
     callback = callback || (() => {});
     Meteor.callAsync( method, options || {}).then( launch => {
         OAuth.launchLogin({
-            loginService: 'iziam',
+            loginService: iziamOAuth.C.Service,
             loginStyle: launch.loginStyle,
             loginUrl: launch.url,
             credentialToken: launch.credentialToken,

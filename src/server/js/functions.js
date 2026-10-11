@@ -5,7 +5,6 @@
 import { createRequire } from 'node:module';
 import { EnvSettings } from 'meteor/pwix:env-settings';
 import { Meteor } from 'meteor/meteor';
-import { OAuth } from 'meteor/oauth';
 import { ServiceConfiguration } from 'meteor/service-configuration';
 
 import { States } from '../../common/collections/states/index.js';
@@ -49,7 +48,7 @@ iziamOAuth.s = {
                 }
                 // Meteor only needs a service marker. Never publish client_secret via
                 // ServiceConfiguration, which accounts-xxx packages expose to browsers.
-                await ServiceConfiguration.configurations.upsertAsync({ service: 'iziam' }, {
+                await ServiceConfiguration.configurations.upsertAsync({ service: iziamOAuth.C.Service }, {
                     $set: { service: iziamOAuth.C.Service },
                     $unset: { client_secret: '', secret: '' }
                 });
@@ -60,42 +59,21 @@ iziamOAuth.s = {
     },
 
     /**
-     * @summary
+     * @summary Returns the login options as defined by the application in its settings
      * @param {*} options 
      * @param {*} context 
-     * @returns 
+     * @returns {Object}
      */
     async loginOptions( options = {}, context={} ){
         return ( await this.engine()).start( options, context );
     },
 
+    /**
+     * @summary Returns the logout options as defined by the application in its settings
+     * @param {*} serviceData 
+     * @returns {Object}
+     */
     async logoutOptions( serviceData ){
         return ( await this.engine()).logout( serviceData );
     }
 };
-
-OAuth.registerService( iziamOAuth.C.Service, 2, null, async query => {
-    try {
-        return await ( await iziamOAuth.s.engine()).complete( query );
-    } catch( error ){
-        // Provider errors can embed tokens or callback parameters. Send a bounded
-        // error through Meteor's credential completion mechanism instead.
-        throw new Meteor.Error( 'iziam-authorization-failed', 'izIAM authorization failed or expired' );
-    }
-});
-
-iziamOAuth.retrieveCredential = ( token, secret ) => OAuth.retrieveCredential( token, secret );
-
-// OAuth-only authorization is deliberately server-side. The application owns
-// oauth_redirect_uri and passes its query to completeAuthorization there.
-iziamOAuth.authorizationFlow = async ( grantType, options={} ) => {
-    if( grantType === 'refresh_token' ){
-        const { credentials, ...grantOptions } = options;
-        return ( await iziamOAuth.s.engine()).refresh( credentials, grantOptions );
-    }
-    if( grantType === 'client_credentials' ) return ( await iziamOAuth.s.engine()).clientCredentials( options );
-    if( grantType !== 'authorization_code' ) throw new Error( 'Unsupported grant type' );
-    return ( await iziamOAuth.s.engine()).start( options, { mode: 'oauth' });
-};
-
-iziamOAuth.completeAuthorization = async ( query, credentialToken ) => ( await iziamOAuth.s.engine()).complete( query, 'oauth', credentialToken );

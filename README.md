@@ -12,7 +12,8 @@ Requires Meteor 3.3.1 or later and a Node runtime with native ESM `require`
 Install the application's peer dependency:
 
 ```sh
-    meteor npm install 'openid-client@^6.8.4'
+    meteor add pwix:iziam-oauth
+    meteor npm install lodash openid-client
 ```
 
 Only openid-client v6 is supported at the moment. The server loads it through Node's native
