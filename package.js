@@ -15,7 +15,6 @@ Package.onUse( api => {
     api.use( 'oauth2' );
     api.use( 'pwix:env-settings@2.1.0', 'server' );
     api.use( 'pwix:env-settings-ext@1.2.0', 'server' );
-    api.use( 'pwix:i18n@1.7.0' );
     api.use( 'pwix:logger@1.0.0' );
     api.use( 'reactive-var' );
     api.use( 'service-configuration' );
