@@ -52,7 +52,6 @@ supported and takes precedence. Never put client secrets in public settings.
                 "client_id": "application-client",
                 "client_secret": "configure-outside-source-control",
                 "token_endpoint_auth_method": "client_secret_basic",
-                "redirect_uri": "https://application.example/_oauth/iziam",
                 "loginStyle": "popup",
                 "popupOptions": { "width": 900, "height": 450 },
                 "scopes": [ "openid", "profile", "email" ],
@@ -155,6 +154,31 @@ exercise native library loading, the real callback, pending credentials, and
 atomic Mongo state consumption. See [maintainer/README.md](maintainer/README.md)
 for the isolated Meteor/browser test procedure and the
 [consolidation contract](maintainer/consolidation.md).
+
+## NPM peer dependencies
+
+Starting with v 1.0.0, and in accordance with advices from [the Meteor Guide](https://guide.meteor.com/writing-atmosphere-packages.html#peer-npm-dependencies), we no more hardcode NPM dependencies in the `Npm.depends` clause of the `package.js`.
+
+Instead we check npm versions of installed packages at runtime, on server startup, in development environment.
+
+Dependencies as of v 1.3.0:
+
+```js
+    'lodash': '^4.17.0'
+    'openid-client': '^6.8.4'
+```
+
+## Translations
+
+None at the moment.
+
+## Cookies and comparable technologies
+
+None at the moment.
+
+## Issues & help
+
+In case of support or error, please report your issue request to our [Issues tracker](https://github.com/trychlos/pwix-env-settings-ext/issues).
 
 ---
 P. Wieser

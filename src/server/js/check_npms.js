@@ -4,9 +4,13 @@
 
 import { checkNpmVersions } from 'meteor/tmeasday:check-npm-versions';
 
-// openid-client is loaded and version-checked natively in functions.js;
-// jose is its transitive dependency. Meteor's package-scoped resolver cannot
-// reliably inspect these ESM packages and otherwise reports false missing peers.
+// whitelist packages which are not well handled by the standard ESM import
+//  by requiring directly the package.json
+if( false ){
+    // even the explicit require doesn't let checkNpmVersions() find the openid-client version
+    //  so rely on iziamOAuth.s.engine() function
+    //require( 'openid-client/package.json' );
+}
 
 checkNpmVersions({
     'lodash': '^4.17.0',

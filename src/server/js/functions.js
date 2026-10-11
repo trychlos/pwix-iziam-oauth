@@ -3,13 +3,15 @@
  */
 
 import { createRequire } from 'node:module';
+
 import { EnvSettings } from 'meteor/pwix:env-settings';
-import { Meteor } from 'meteor/meteor';
-import { ServiceConfiguration } from 'meteor/service-configuration';
+import { Logger } from 'meteor/pwix:logger';
 
 import { States } from '../../common/collections/states/index.js';
 
 import { Protocol } from '../classes/protocol.class.js';
+
+const logger = Logger.get();
 
 // Native Node loading respects ESM package exports, including jose. It also
 // avoids Meteor's compiler rewriting openid-client's transitive imports.
@@ -25,23 +27,26 @@ iziamOAuth.s = {
     async engine(){
         if( !enginePromise ){
             enginePromise = ( async () => {
+                // check for openid-client
                 const version = applicationRequire( 'openid-client/package.json' ).version;
                 const [ major, minor, patch ] = version.split( '.' ).map( Number );
                 if( major !== 6 || minor < 8 || ( minor === 8 && patch < 4 )){
-                    throw new Error( 'iziam requires openid-client 6 (>= 6.8.4)' );
+                    throw new Error( 'requires openid-client 6 (>= 6.8.4)' );
                 }
                 const client = applicationRequire( 'openid-client' );
-                const environment = Meteor.settings.private?.iziam ? null : await EnvSettings.s.environmentServerSettings();
-                const privateSettings = environment?.settings?.private?.iziam || Meteor.settings.private?.iziam;
-                if( !privateSettings ){
-                    throw new ServiceConfiguration.ConfigError();
+                // get settings 
+                let settings = Meteor.settings;
+                if( !settings.private?.iziam ){
+                    settings = ( await EnvSettings.s.environmentServerSettings()).settings;
+                    //logger.debug( 'settings', settings );
                 }
-                const settings = { ...privateSettings };
-                const callback = Meteor.absoluteUrl( '_oauth/iziam' );
-                settings.redirect_uri = settings.redirect_uri || callback;
-                if( settings.redirect_uri !== callback ){
-                    throw new Error( 'iziam redirect_uri must equal '+callback );
+                if( !settings.private?.iziam ){
+                    throw new Error( 'izIAM settings not found' );
                 }
+                settings = settings.private.iziam;
+                // compute mandatory redirect uri to izIAM
+                settings.redirect_uri = Meteor.absoluteUrl( '_oauth/iziam' );
+                // compute mandatory redirect uri back to application
                 settings.afterUrl = new URL( iziamOAuth.configure().afterRoute, Meteor.absoluteUrl()).toString();
                 if( new URL( settings.afterUrl ).origin !== new URL( Meteor.absoluteUrl()).origin ){
                     throw new Error( 'iziam afterRoute must stay on the application origin' );

@@ -6,8 +6,9 @@
 
 import _ from 'lodash';
 
-// OAuth-only authorization is deliberately server-side. The application owns
-// oauth_redirect_uri and passes its query to completeAuthorization there.
+// OAuth-only authorization is deliberately server-side.
+//  The application owns oauth_redirect_uri and passes its query to completeAuthorization there.
+
 iziamOAuth.authorizationFlow = async ( grantType, options={} ) => {
     const engine = await iziamOAuth.s.engine();
     if( !engine ){
