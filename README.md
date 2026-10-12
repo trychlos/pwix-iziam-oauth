@@ -1,8 +1,13 @@
 # pwix:iziam-oauth
 
-OAuth 2 and OpenID Connect 1.0 protocol support for izIAM. Applications install
-and use **pwix:accounts-iziam**, which delegates to this package. The former
-`pwix:iziam-oidc` implementation is retired; there is no compatibility wrapper.
+## What is it ?
+
+`pwix:iziam-oauth` is OAuth 2 and OpenID Connect 1.0 protocol support for izIAM.
+
+Applications install and use [`pwix:accounts-iziam`](https://github.com/trychlos/pwix-accounts-iziam),
+which delegates to this package.
+
+The former`pwix:iziam-oidc` implementation is retired; there is no compatibility wrapper.
 
 ## Runtime and installation
 
@@ -16,10 +21,7 @@ Install the application's peer dependency:
     meteor npm install lodash openid-client
 ```
 
-Only openid-client v6 is supported at the moment. The server loads it through Node's native
-module loader, which respects package exports. No build step modifies `jose` or
-any other application dependency. The pwix settings, i18n and UI dependencies
-have their own npm peer requirements; see their documentation.
+Only openid-client v6 is supported at the moment.
 
 ## Responsibilities
 
@@ -27,16 +29,17 @@ have their own npm peer requirements; see their documentation.
   signature and claims validation, UserInfo subject validation, and Meteor's
   credential exchange at `/_oauth/iziam`.
 
-- OAuth-only authorization code with PKCE: server API, using an application-owned
+- OAuth-only authorization code with or without PKCE: server API, using an application-owned
   callback; returns tokens without creating a Meteor account.
 
 - Client credentials and refresh-token grants: server APIs only.
 
-- End-session URL construction and izIAM's `prompt=change_password` interaction.
+- End-session URL construction and izIAM's change password interaction.
 
 The OAuth-only API intentionally does not install a client-side router or log in
-an application user. OIDC is the identity layer on OAuth 2; it is not OpenID 1.
-This implementation does not claim complete OAuth 2.1 conformance.
+an application user. OIDC is the identity layer on OAuth 2.
+
+This implementation does not claim complete OAuth 2.1 nor complete OpenID 1.0 Connect conformance.
 
 ## Private settings
 
@@ -64,19 +67,22 @@ supported and takes precedence. Never put client secrets in public settings.
     }
 ```
 
-`issuerUrl` and `client_id` are required. Supported token-endpoint authentication
-methods are `client_secret_basic`, `client_secret_post`, and `none`; omitting a
-secret selects `none`. Client credentials requires a secret. `redirect_uri`
-defaults to `Meteor.absoluteUrl('_oauth/iziam')` and must equal it when supplied;
-configure `ROOT_URL` accordingly. Register redirect URLs with izIAM.
+`issuerUrl` and `client_id` are required.
+
+Supported token-endpoint authentication methods are `client_secret_basic`, `client_secret_post`, and `none`; omitting a
+secret selects `none`. Client credentials requires a secret.
+
+`redirect_uri` is computed equal to `Meteor.absoluteUrl('_oauth/iziam')`; configure `ROOT_URL` accordingly.
+Though it is not needed to register this redirect URL in the application settings, you still MUST register it with izIAM.
 
 `oauth_redirect_uri` is needed only for OAuth-only authorization and must point
 to an application server handler, distinct from the Meteor login callback.
+
 `allowInsecureLocalhost: true` enables HTTP for an explicitly configured loopback
 issuer in local tests; HTTPS remains the default.
 
-Configuration and discovery are cached after first use. Configure the application
-before starting a flow; restart after changing private provider settings.
+Configuration and discovery are cached after first use.
+Configure the application before starting a flow; restart after changing private provider settings.
 
 ## Application APIs
 
@@ -155,6 +161,42 @@ atomic Mongo state consumption. See [maintainer/README.md](maintainer/README.md)
 for the isolated Meteor/browser test procedure and the
 [consolidation contract](maintainer/consolidation.md).
 
+## Configuration
+
+The package's behavior can be configured through a call to the `iziamOAuth.configure()` method, with just a single javascript object argument, which itself should only contains the options you want override.
+
+Known configuration options are:
+
+- `afterRoute`
+
+    The route to be routed to after a successful login.
+
+    Defaults to `/`.
+
+- `verbosity`
+
+    Defines the expected verbosity level.
+
+    The accepted value can be any or-ed combination of following:
+
+    - `iziamOAuth.C.Verbose.NONE`
+
+        Do not display any trace log to the console
+
+    - `iziamOAuth.C.Verbose.CONFIGURE`
+
+        Display the configuration options and result.
+
+    - `iziamOAuth.C.Verbose.DEBUG`
+
+        Display debug informations.
+
+    Defaults to `iziamOAuth.C.Verbose.CONFIGURE`.
+
+Please note that `iziamOAuth.configure()` method should be called in the same terms both in client and server sides.
+
+Remind too that Meteor packages are instanciated at application level. They are so only configurable once, or, in other words, only one instance has to be or can be configured. Addtionnal calls to `iziamOAuth.configure()` will just override the previous one. You have been warned: **only the application should configure a package**.
+
 ## NPM peer dependencies
 
 Starting with v 1.0.0, and in accordance with advices from [the Meteor Guide](https://guide.meteor.com/writing-atmosphere-packages.html#peer-npm-dependencies), we no more hardcode NPM dependencies in the `Npm.depends` clause of the `package.js`.
@@ -178,7 +220,7 @@ None at the moment.
 
 ## Issues & help
 
-In case of support or error, please report your issue request to our [Issues tracker](https://github.com/trychlos/pwix-env-settings-ext/issues).
+In case of support or error, please report your issue request to our [Issues tracker](https://github.com/trychlos/pwix-iziam-oauth/issues).
 
 ---
 P. Wieser
