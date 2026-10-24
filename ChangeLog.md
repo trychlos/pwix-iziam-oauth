@@ -2,9 +2,9 @@
 
 ## ChangeLog
 
-### 1.0.1-rc.0
+### 1.0.1
 
-    Release date:
+    Release date: 2026-10-24
 
     - Document required runtime OAuth configuration refresh without application restart.
 
@@ -16,4 +16,4 @@
 
 ---
 P. Wieser
-- Last updated on 2026, Oct. 9th
+- Last updated on 2026, Oct. 24th

@@ -1,6 +1,6 @@
 Package.describe({
     name: 'pwix:iziam-oauth',
-    version: '1.0.1-rc.0',
+    version: '1.0.1',
     summary: 'izIAM OAuth 2 and OpenID Connect protocol client',
     git: 'https://github.com/trychlos/pwix-iziam-oauth.git',
     documentation: 'README.md'
